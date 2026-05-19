@@ -133,8 +133,25 @@ def _xlsx_to_rows(file_bytes):
         sheet_ids = [s.attrib.get(f"{{{REL_NS}}}id")
                      for s in wb_xml.findall(f".//{{{NS}}}sheet")]
         rel_map      = {r.get("Id"): r.get("Target") for r in rel_xml}
-        sheet_target = rel_map.get(sheet_ids[0], "")
-        sheet_path   = f"xl/{sheet_target}" if not sheet_target.startswith("xl/") else sheet_target
+        sheet_target = rel_map.get(sheet_ids[0], "").lstrip("/")
+
+        # Resolve to a path that actually exists in the zip.
+        # Targets can be:
+        #   "worksheets/sheet1.xml"     -> prepend "xl/"
+        #   "xl/worksheets/sheet1.xml"  -> use as-is
+        #   "/xl/worksheets/sheet1.xml" -> strip leading slash (openpyxl quirk)
+        if sheet_target in names:
+            sheet_path = sheet_target
+        elif f"xl/{sheet_target}" in names:
+            sheet_path = f"xl/{sheet_target}"
+        else:
+            # Last resort: scan zip for the first worksheet entry
+            sheet_path = next(
+                (n for n in names if "worksheets/sheet" in n and n.endswith(".xml")), None
+            )
+            if sheet_path is None:
+                raise FileNotFoundError("Could not locate worksheet in xlsx archive.")
+
         ws = ET.fromstring(zf.read(sheet_path))
 
     EXCEL_EPOCH = datetime(1899, 12, 30)
