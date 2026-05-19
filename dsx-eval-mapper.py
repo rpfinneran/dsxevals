@@ -230,10 +230,11 @@ def load_data(file_bytes):
         lambda d: f"{d.month}/{d.day}/{d.year}" if pd.notna(d) else None
     )
 
-    # Soccer age — use the pre-calculated column F from the spreadsheet
-    # It already accounts for the Aug 1 season cutoff; no need to recalculate.
-    df["age"] = df["soccer_age"].apply(
-        lambda x: int(float(x)) if pd.notna(x) and str(x).replace(".", "").isdigit() else None
+    # Real current age — calculated from DOB using today's date
+    today = datetime.today().date()
+    df["age"] = df["dob"].apply(
+        lambda d: today.year - d.year - ((today.month, today.day) < (d.month, d.day))
+        if pd.notna(d) else None
     )
 
     # Eval group: simplify "U10 (August 1 2016 - July 31 2017)" → "U10"
