@@ -155,12 +155,11 @@ if "roster" not in st.session_state:
     st.session_state.roster = []
 
 
-# ── Sidebar: upload + filters ─────────────────────────────────────────────────
+# ── Sidebar: upload only ─────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("## ⚽ Roster Builder")
     st.markdown("---")
     uploaded_file = st.file_uploader("📂 Upload roster (.xlsx)", type=["xlsx"])
-    st.markdown("---")
 
 if uploaded_file is None:
     st.markdown("# ⚽ U12 Roster Builder")
@@ -174,19 +173,31 @@ if st.session_state.get("last_file") != uploaded_file.name:
 file_bytes = uploaded_file.read()
 players    = load_data(file_bytes)
 
-with st.sidebar:
-    st.markdown("### Filters")
-    all_eval     = sorted(set(p["eval_group"] for p in players if p["eval_group"]))
-    selected_eval = st.multiselect("Eval group", all_eval, default=all_eval)
-    all_ages     = sorted(set(p["age"] for p in players if p["age"] is not None))
-    selected_ages = st.multiselect("Current age", all_ages, default=all_ages)
-    dsx_only     = st.checkbox("DSX players only")
-    st.markdown("---")
-    search       = st.text_input("🔍 Search name")
-    st.markdown("---")
+# ── Inline filter bar ─────────────────────────────────────────────────────────
+all_eval      = sorted(set(p["eval_group"] for p in players if p["eval_group"]))
+all_ages      = sorted(set(p["age"] for p in players if p["age"] is not None))
+
+f1, f2, f3, f4, f5 = st.columns([2.2, 2.2, 1, 2, 1])
+with f1:
+    selected_eval  = st.multiselect("Eval group", all_eval, default=all_eval, label_visibility="collapsed",
+                                    placeholder="All eval groups")
+with f2:
+    selected_ages  = st.multiselect("Age", all_ages, default=all_ages, label_visibility="collapsed",
+                                    placeholder="All ages")
+with f3:
+    dsx_only       = st.checkbox("DSX only")
+with f4:
+    search         = st.text_input("Search", placeholder="🔍 Search name", label_visibility="collapsed")
+with f5:
     if st.button("🗑️ Clear roster"):
         st.session_state.roster = []
         st.rerun()
+
+# Use defaults if nothing selected (treat empty multiselect as "show all")
+if not selected_eval:
+    selected_eval = all_eval
+if not selected_ages:
+    selected_ages = all_ages
 
 
 # ── Filter ────────────────────────────────────────────────────────────────────
@@ -417,8 +428,7 @@ document.querySelectorAll('.drop-zone').forEach(zone => {{
 
 # ── Render ────────────────────────────────────────────────────────────────────
 st.markdown("# ⚽ U12 Roster Builder")
-st.markdown("Drag players from the **pool** on the left onto the **U12 Roster** on the right.")
-st.markdown("---")
+st.caption("Drag players from the pool on the left onto the U12 Roster on the right.")
 
 dnd_html = build_dnd_html(pool_players, pitch_players)
 
