@@ -160,19 +160,21 @@ def _xlsx_to_rows(file_bytes):
         t    = c.get("t", "n")
         v_el = c.find(f"{{{NS}}}v")
         v    = v_el.text if v_el is not None else None
+
+        # inlineStr: value lives in <is><t> not <v> (openpyxl writes this format)
+        if t == "inlineStr":
+            el = c.find(f"{{{NS}}}is/{{{NS}}}t")
+            return el.text if el is not None else None
+
         if v is None:
             return None
         if t == "s":
             return shared[int(v)]
         if t == "b":
             return bool(int(v))
-        if t == "inlineStr":
-            el = c.find(f"{{{NS}}}is/{{{NS}}}t")
-            return el.text if el is not None else None
         try:
             fv = float(v)
-            # Heuristic: serial dates in xlsx land between ~1900 and ~2100
-            # Col E (DOB) serials for kids born 2010-2022 fall in 40179–44927
+            # Heuristic: serial dates for DOBs of kids born 2005-2025 → ~38353–46022
             if 35000 < fv < 55000:
                 return EXCEL_EPOCH + pd.Timedelta(days=fv)
             return fv
